@@ -1,0 +1,301 @@
+import React, { useState, useContext } from 'react';
+import axios from 'axios';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import Modal from './Modal';
+import { useUser } from './Context/UserContext';
+import logo from '../static/iqraorignal.png'
+import loginImage from '../static/login.png'
+import { API_BASE_URL } from '../config';
+const Login = ({ togglePage }) => {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [error, setError] = useState(null);
+    const [otp, setOtp] = useState('');
+    const [email, setEmail] = useState('');
+    const [emailVerified, setEmailVerified] = useState(false);
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [isVerified, setIsVerified] = useState(false);
+    const [isOTPValid, setIsOTPValid] = useState(false);
+    const { setUser } = useUser();
+
+    const sendOTP = async () => {
+        try {
+            const response = await axios.post(`${API_BASE_URL}/forgot-password/`, { email });
+            if (response.data.message === 'OTP sent to your email.') {
+                toast.success('OTP to reset password has been sent to your email');
+                setIsEmailModalOpen(false);  
+                setIsModalOpen(true);      
+            } else {
+                toast.error('Failed to send OTP.');
+            }
+        } catch (error) {
+            toast.error('Failed to send OTP.');
+        }
+    };
+
+    const verifyOtp = async () => {
+        if (!otp) {
+            toast.error('Please enter OTP.');
+            return;
+        }
+        try {
+            const response = await axios.post(`${API_BASE_URL}/reset-password/`, { otp, email, new_password: newPassword });
+            if (response.data.message === 'Password has been reset successfully.') {
+                setIsOTPValid(true);
+                toast.success('Password has been reset successfully.');
+                setIsModalOpen(false);
+            } else {
+                toast.error('Invalid OTP, please try again.');
+            }
+        } catch (error) {
+            toast.error('Error verifying OTP.');
+        }
+    };
+
+
+    const navigate = useNavigate();
+        const validateFields = () => {
+            let isValid = true;
+            let messages = [];
+        
+            if (!email) {
+                messages.push('Email is required.');
+                isValid = false;
+            }
+            
+            if (!email.match(/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/)) {
+                messages.push('Invalid email format.');
+                isValid = false;
+            }
+    
+            if (!isValid) {
+                for(let i=0; i<messages.length; i++) {
+                toast.error(messages[i]);
+                }
+            }
+            if (isValid){
+                setIsVerified(true);
+            }
+            return isValid;
+        };
+
+
+        const handleResetPassword = async () => {
+            if (newPassword !== confirmPassword) {
+                toast.error("Passwords do not match");
+                return;
+            }
+    
+            try {
+                const response = await axios.post(`${API_BASE_URL}/reset-password/`, {
+                    email,
+                    new_password: newPassword,
+                    otp
+                });
+    
+                if (response.data.message === 'Password has been reset successfully.') {
+                    toast.success('Password reset successfully.');
+                    setIsModalOpen(false);
+                    navigate('/login');  
+                } else {
+                    toast.error('Failed to reset password, please try again.');
+                }
+            } catch (error) {
+                toast.error('An error occurred while resetting password.');
+            }
+        };
+
+        const handleEmailChange = (e) => {
+            setEmail(e.target.value);
+        };
+    
+    
+        const handleChangeNewPassword = (e) => {
+            setNewPassword(e.target.value);
+        };
+    
+        const handleChangeConfirmPassword = (e) => {
+            setConfirmPassword(e.target.value);
+        };
+    
+
+    const handleOpenModal = () => {
+        if (validateFields()) {
+            setIsModalOpen(true);
+            sendOTP();
+        }
+    };
+
+
+    const handleCloseModal = () => setIsModalOpen(false);
+    const handleChangeOtp = (e) => setOtp(e.target.value);
+    const handleOpenEmailModal = () => setIsEmailModalOpen(true);
+    const handleCloseEmailModal = () => {
+        setIsEmailModalOpen(false);
+        handleOpenModal()
+    }
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+    
+        setError(null);  // Reset error state
+    
+        const userData = { username, password };
+        
+    
+        try {
+            const response = await axios.post(`${API_BASE_URL}/login/`, userData, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+    
+            if (response.status === 200) {
+                localStorage.setItem('access_token', response.data.access_token);
+                setUser({ username: response.data.username, isAdmin: response.data.is_admin });
+                // Show success toast
+                toast.success("Logged in successfully")
+                const token = localStorage.getItem('access_token');
+                await axios.post(`${API_BASE_URL}/update-active-time/`, { active: false },{
+                    headers: { 'Content-Type': 'application/json',
+                         Authorization: `Bearer ${token}`
+                     }
+                });
+
+    
+                // Reset the form fields
+                setUsername('');
+                setPassword('');
+                
+                navigate(response.data.is_admin ? '/admin' : '/code');
+            } else {
+                setError(response.data.detail || 'An error occurred during login.');
+                toast.error("An error occurred during login.")
+            }
+        } catch (err) {
+            // Handle errors from the API
+            if (err.response) {
+                setError(err.response.data.detail || 'An error occurred during login.');
+                toast.error("An error occurred during login.")
+            } else {
+                setError('Network error. Please try again.');
+            }
+        }
+    };
+
+    return (
+        <div className="w-full flex flex-col items-center justify-center bg-blue-950 ">
+           
+            <div className="w-full flex-grow  flex items-center justify-center bg-blue-950   text-blue-950 rounded-lg">
+                <form className="w-11/12 px-6 md:w-1/2  text-sm flex flex-col items-center justify-center gap-4" onSubmit={handleSubmit}>
+                <div className='w-full md:w-2/3 flex p-6 rounded-xl bg-white text-blue-950 flex-col items-center gap-4'>
+                        <p className='text-xl  sm:text-3xl md:text-2xl text-blue-950 font-semibold text-center w-full '>Welcome Back</p>
+                        
+                        <p className='w-full hidden sm:block text-xs sm:text-sm text-blue-950 font-semibold mb-2 text-center'>Simplify Learning and Boost your Coding Journey with Iqra's AI Training Assistant</p>
+                    <div className="w-full ">
+                        
+
+                        <label htmlFor="username" className='font-semibold'>Username</label>
+                        <br />
+                        <input
+                            className="w-full pl-2 h-10 rounded-full border-blue-950 border-2 text-black"
+                            type="text"
+                            id="username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className="w-full">
+                        <label htmlFor="password" className='font-semibold'>Password</label>
+                        <br />
+                        <input
+                            className="w-full h-10 rounded-full pl-2 border-blue-950 border-2 text-black"
+                            type="password"
+                            id="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    {/* New User? Register link */}
+                    <div className="w-full flex items-start sm:text-sm justify-between text-xs text-left ">
+                        
+ 
+                        <p className="text-blue-950 hover:underline cursor-pointer" onClick={togglePage}>
+                          <Link >Create new Account</Link>
+                        </p>
+                        <p className="text-blue-950 hover:underline cursor-pointer" onClick={handleOpenEmailModal}>
+                          Forgot password?
+                        </p>
+                    </div>
+
+                    <button type="submit" className="bg-blue-950 hover:bg-blue-600 text-white my-2 px-6 py-2 rounded-full transition w-full">Login</button>
+                
+                    {isModalOpen && (
+                <Modal onClose={() => setIsModalOpen(false)}>
+                    
+                            <h3>Set New Password</h3>
+                            <input
+                                type="password"
+                                value={newPassword}
+                                onChange={handleChangeNewPassword}
+                                className="p-2 pl-2 text-black"
+                                placeholder="New Password"
+                            />
+                            <h3>Re-enter New Password</h3>
+                            <input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={handleChangeConfirmPassword}
+                                className="p-2"
+                                placeholder="Confirm Password"
+                            />
+
+                  
+                            <h3>Enter OTP sent to your email</h3>
+                            <input
+                                type="text"
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                className="p-2"
+                                placeholder="Enter OTP"
+                            />
+                            
+                            <button onClick={verifyOtp} className="bg-blue-500 hover:bg-blue-700 rounded-lg text-white font-bold px-4 py-2">
+                                Verify OTP
+                            </button>
+                    
+
+                </Modal>
+            )}
+            {isEmailModalOpen && (
+                    <Modal onClose={handleCloseEmailModal}>
+                        <h3>Enter your email to receive OTP</h3>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={handleEmailChange}
+                            className="p-2"
+                            placeholder="Enter your email"
+                        />
+                        <button onClick={sendOTP} className="bg-blue-500 hover:bg-blue-700 rounded-lg text-white font-bold px-4 py-2">
+                            Send OTP
+                        </button>
+                    </Modal> 
+                )}
+                </div>
+                </form>
+
+
+                {error && <p className="error-message text-red-500">{error}</p>}
+            </div>
+        </div>
+    );
+};
+
+export default Login;
