@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunksmart_compiler=self.webpackChunksmart_compiler||[]).push([[503],{1503:(e,r,s)=>{s.r(r),s.d(r,{default:()=>c});s(5043);var t=s(579);const c=function(){return(0,t.jsx)("div",{children:"Settings"})}}}]);
+//# sourceMappingURL=503.6a874bdd.chunk.js.map
