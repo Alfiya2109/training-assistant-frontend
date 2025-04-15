@@ -22,8 +22,8 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format } from 'date-fns';
 
 const UserPerformanceDashboard = () => {
-  const [data, setData] = useState([]); // API Data
-  const [rows, setRows] = useState([]); // Processed rows
+  const [data, setData] = useState([]);
+  const [rows, setRows] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState(null);
@@ -35,6 +35,10 @@ const UserPerformanceDashboard = () => {
   const API_ENDPOINT = `${API_BASE_URL}/user-performance/`;
   const token = localStorage.getItem('access_token');
 
+  const capitalizeFirstLetter = (string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -44,7 +48,6 @@ const UserPerformanceDashboard = () => {
           },
         });
         const result = await response.json();
-        console.log("Fetched API Data:", result);
         setData(result || []);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -57,8 +60,6 @@ const UserPerformanceDashboard = () => {
 
   useEffect(() => {
     if (!loading && data.length > 0) {
-      console.log("Processing Data:", data);
-
       const processedRows = data.flatMap((student) => {
         let lastActive = new Date(0);
         if (student.activity_log?.length) {
@@ -83,17 +84,19 @@ const UserPerformanceDashboard = () => {
             difficultyCount[lang].total += 1;
           });
 
-          return Object.entries(difficultyCount).map(([lang, counts]) => ({
+          return Object.entries(difficultyCount).map(([lang, counts], index) => ({
             username: student.username,
             firstname: student.firstname,
             lastname: student.lastname,
             totalProblemsSolved: student.total_problems_solved || 0,
-            language: lang,
+            language: capitalizeFirstLetter(lang),
             easy: counts.easy,
             medium: counts.medium,
             hard: counts.hard,
             languageTotal: counts.total,
             lastActive,
+            rowIndex: index,
+            rowSpan: Object.keys(difficultyCount).length
           }));
         } else {
           return [{
@@ -107,19 +110,19 @@ const UserPerformanceDashboard = () => {
             hard: 0,
             languageTotal: 0,
             lastActive,
+            rowIndex: 0,
+            rowSpan: 1
           }];
         }
       });
 
       setRows(processedRows);
-      console.log("Processed Rows:", processedRows);
     }
   }, [data, loading]);
 
   const filteredRows = rows.filter((row) => {
     const term = searchTerm.toLowerCase();
     return (
-      // row.username.toLowerCase().includes(term) ||
       row.firstname.toLowerCase().includes(term) ||
       row.language.toLowerCase().includes(term)
     );
@@ -193,20 +196,42 @@ const UserPerformanceDashboard = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {dateFilteredRows.map((row, index) => (
-                <TableRow key={index}>
-                  <TableCell>{row.firstname} {row.lastname}</TableCell>
-                  <TableCell align="right">{row.totalProblemsSolved}</TableCell>
-                  <TableCell>{row.language}</TableCell>
-                  <TableCell align="right">{row.easy}</TableCell>
-                  <TableCell align="right">{row.medium}</TableCell>
-                  <TableCell align="right">{row.hard}</TableCell>
-                  {!isMobile && <TableCell align="right">{row.languageTotal}</TableCell>}
-                  <TableCell align="right">
-                    {format(row.lastActive, 'dd-MM-yyyy')}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {(() => {
+                const groupedByUser = {};
+
+                dateFilteredRows.forEach((row) => {
+                  const key = row.username;
+                  if (!groupedByUser[key]) groupedByUser[key] = [];
+                  groupedByUser[key].push(row);
+                });
+
+                return Object.entries(groupedByUser).flatMap(([username, userRows]) => {
+                  return userRows.map((row, idx) => (
+                    <TableRow key={`${username}-${idx}`}>
+                      {idx === 0 && (
+                        <>
+                          <TableCell rowSpan={userRows.length}>
+                            {row.firstname} {row.lastname}
+                          </TableCell>
+                          <TableCell rowSpan={userRows.length} align="right">
+                            {row.totalProblemsSolved}
+                          </TableCell>
+                        </>
+                      )}
+                      <TableCell>{row.language}</TableCell>
+                      <TableCell align="right">{row.easy}</TableCell>
+                      <TableCell align="right">{row.medium}</TableCell>
+                      <TableCell align="right">{row.hard}</TableCell>
+                      {!isMobile && (
+                        <TableCell align="right">{row.languageTotal}</TableCell>
+                      )}
+                      <TableCell align="right">
+                        {format(row.lastActive, 'dd-MM-yyyy')}
+                      </TableCell>
+                    </TableRow>
+                  ));
+                });
+              })()}
             </TableBody>
           </Table>
         </TableContainer>

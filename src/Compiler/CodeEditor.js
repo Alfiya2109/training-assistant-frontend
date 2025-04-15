@@ -45,7 +45,7 @@ const CodeEditor = () => {
         const unsolvedQuestions = response.data.filter(q => q.status === 'unsolved');
         setQuestions(unsolvedQuestions);
         setFilteredQuestions(unsolvedQuestions);
-        const topics = [...new Set(unsolvedQuestions.map((q) => q.question.topic))];
+        const topics = [...new Set(unsolvedQuestions.map((q) => q.question.topic_name))];
         setAvailableTopics(topics);
         setSelectedQuestion(unsolvedQuestions[0]); 
       } catch (error) {
@@ -296,7 +296,7 @@ const CodeEditor = () => {
     }
   
     if (topic) {
-      filtered = filtered.filter((q) => q.question.topic === topic); // Filter by topic
+      filtered = filtered.filter((q) => q.question.topic_name === topic); // Filter by topic
     }
   
     // If no filter is selected, show all questions
@@ -315,6 +315,7 @@ const CodeEditor = () => {
 
   const handleTopicChange = (e) => {
     setSelectedTopic(e.target.value);
+    console.log(e.target.value)
     filterQuestions(selectedDifficulty, e.target.value);
   };
 

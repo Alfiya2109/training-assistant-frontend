@@ -13,7 +13,7 @@ const QuestionItem = ({ selectedQuestion, toggleSidebar }) => {
               {selectedQuestion ? (
                 <>
                   <p className="font-semibold">{selectedQuestion.question.id}. {selectedQuestion.question.name}</p>
-                  <p>Topic: {selectedQuestion.question.topic}</p>
+                  <p>Topic: {selectedQuestion.question.topic_name}</p>
                   <p className='font-semibold text-xs text-justify'>Companies: {selectedQuestion.question.companies}</p>
 
                   <code className="block p-2 bg-slate-600 text-justify text-white rounded mt-2">
