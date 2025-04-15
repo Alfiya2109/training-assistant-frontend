@@ -38,11 +38,25 @@ const Sidebar = ({
       <option value="easy">Easy</option>
       <option value="medium">Medium</option>
       <option value="hard">Hard</option>
+      <option value="complex">Complex</option>
     </select>
   </div>
 
   <div>
   <label className="block mb-1 text-sm font-semibold">Topic</label>
+<select
+  className="w-full p-2 rounded-md bg-slate-900 border border-gray-500 focus:ring-2 focus:ring-blue-500"
+  value={selectedTopic}
+  onChange={handleTopicChange}
+>
+  <option value="">All</option>
+  {[...new Set(availableTopics)].map((topic, index) => (
+    <option key={index} value={topic}>
+      {topic}
+    </option>
+  ))}
+</select>
+
 <select
   className="w-full p-2 rounded-md bg-slate-900 border border-gray-500 focus:ring-2 focus:ring-blue-500"
   value={selectedTopic}
@@ -68,7 +82,7 @@ const Sidebar = ({
         >
           <p className="text-sm font-semibold">
             {q.question.id}. {q.question.name}</p>
-          <p className="text-xs">Topic: {q.question.topic}</p>
+          <p className="text-xs">Topic: {q.question.topic_name}</p>
         </div>
       ))
     ) : (
