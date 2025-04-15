@@ -12,6 +12,54 @@ import Output from './Output';
 import { FaCopy } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { API_BASE_URL } from '../config';
+
+const cleanCompanyNames = (companies) => {
+  // Use a Set to collect unique, cleaned names.
+  const companySet = new Set();
+
+  companies.forEach(rawName => {
+    // Remove newline characters (replacing with space) and trim extra whitespace.
+    let name = rawName.replace(/\n/g, ' ').trim();
+
+    // Skip known invalid entries.
+    if (!name || name === '-' || name.toLowerCase() === 'sdf') {
+      return;
+    }
+
+    // Split the name by commas if present.
+    let splitNames = name.split(',').map(item => item.trim());
+
+    splitNames.forEach(item => {
+      // Replace multiple spaces with a single space.
+      let cleaned = item.replace(/\s+/g, ' ').trim();
+      if (!cleaned || cleaned === '-' || cleaned.toLowerCase() === 'sdf') {
+        return;
+      }
+
+      // Discard entries that likely contain multiple company names.
+      // For example, if there are more than 8 words, skip this entry.
+      const wordCount = cleaned.split(' ').length;
+      if (wordCount > 8) {
+        return;
+      }
+
+      // Convert to title case.
+      cleaned = cleaned.toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      // Add the cleaned name to the set.
+      companySet.add(cleaned);
+    });
+  });
+
+  // Convert the set back to an array and sort alphabetically.
+  return Array.from(companySet).sort();
+};
+
+
+
 const CodeEditor = () => {
   const [language, setLanguage] = useState('csharp');
   const [isChatbotLoading, setIsChatbotLoading] = useState(false);
@@ -32,6 +80,9 @@ const CodeEditor = () => {
   const [availableTopics, setAvailableTopics] = useState([]); 
   const [showOutput, setShowOutput] = useState(false); // State to control the visibility of the output
   const [messagesFromInput, setMessagesFromInput] = useState(false);  
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState('');
+
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
@@ -55,6 +106,26 @@ const CodeEditor = () => {
 
     fetchQuestions();
   }, []);
+
+  useEffect(() => {
+    // Fetch unique companies from the API
+    const token = localStorage.getItem('access_token');
+    axios.get(`${API_BASE_URL}/unique-companies/`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+      .then(response => {
+        setCompanies(cleanCompanyNames(response.data));
+      })
+      .catch(error => {
+        console.error('Error fetching companies:', error);
+      });
+  }, []);
+
+  useEffect(() => {
+    console.log('Fetched questions:', questions);
+  }, [questions]);
 
   const copyToClipboard = (code) => {
     navigator.clipboard.writeText(code)
@@ -319,6 +390,12 @@ const CodeEditor = () => {
     filterQuestions(selectedDifficulty, e.target.value);
   };
 
+  const handleCompanyChange = (selectedValue) => {
+    setSelectedCompany(selectedValue);
+    const filtered = questions.filter(q => q.question.companies && q.question.companies.toLowerCase().includes(selectedValue.toLowerCase()));
+    setFilteredQuestions(filtered);
+  };
+
   const closeOutput = () => {
     setShowOutput(false); 
   };
@@ -341,16 +418,20 @@ const CodeEditor = () => {
         {/* Editor and Output */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-2">
           {/* Sidebar (for unsolved questions) */}
-          <Sidebar isSidebarOpen = { isSidebarOpen}
-            toggleSidebar = { toggleSidebar }
-            filteredQuestions = { filteredQuestions }
-            availableTopics = { availableTopics }
-            selectedDifficulty = { selectedDifficulty }
-            selectedTopic = { selectedTopic }
-            handleDifficultyChange = { handleDifficultyChange }
-            handleTopicChange = { handleTopicChange }
+          <Sidebar 
+            isSidebarOpen={isSidebarOpen}
+            toggleSidebar={toggleSidebar}
+            filteredQuestions={filteredQuestions}
+            availableTopics={availableTopics}
+            selectedDifficulty={selectedDifficulty}
+            selectedTopic={selectedTopic}
+            handleDifficultyChange={handleDifficultyChange}
+            handleTopicChange={handleTopicChange}
             handleQuestionClick={handleQuestionClick}
-            />
+            companies={companies} // Pass companies as a prop
+            handleCompanyChange={handleCompanyChange} // Pass handleCompanyChange as a prop
+          />
+          
           {/* Questions */}
           <QuestionItem selectedQuestion={selectedQuestion} toggleSidebar = {toggleSidebar}/>
           {/* Code Editor */}
