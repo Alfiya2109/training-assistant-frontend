@@ -14,12 +14,16 @@ import {
   Paper,
   TableContainer,
   useMediaQuery,
-  useTheme
+  useTheme,
+  Button
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+import DownloadIcon from '@mui/icons-material/Download';
 
 const UserPerformanceDashboard = () => {
   const [data, setData] = useState([]);
@@ -35,9 +39,8 @@ const UserPerformanceDashboard = () => {
   const API_ENDPOINT = `${API_BASE_URL}/user-performance/`;
   const token = localStorage.getItem('access_token');
 
-  const capitalizeFirstLetter = (string) => {
-    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
-  };
+  const capitalizeFirstLetter = (string) =>
+    string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -137,6 +140,29 @@ const UserPerformanceDashboard = () => {
     );
   });
 
+  const exportToExcel = () => {
+    const exportData = dateFilteredRows.map(row => ({
+      Username: row.username,
+      Firstname: row.firstname,
+      Lastname: row.lastname,
+      Total_Problems_Solved: row.totalProblemsSolved,
+      Language: row.language,
+      Easy: row.easy,
+      Medium: row.medium,
+      Hard: row.hard,
+      Language_Total: row.languageTotal,
+      Last_Active: format(row.lastActive, 'dd-MM-yyyy')
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "User Performance");
+
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(file, "user_performance.xlsx");
+  };
+
   return (
     <Container maxWidth="lg" sx={{ my: 4, px: isMobile ? 2 : 4 }}>
       <Typography variant={isMobile ? 'h6' : 'h5'} align="center" gutterBottom>
@@ -154,7 +180,7 @@ const UserPerformanceDashboard = () => {
       />
 
       <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <Box display="flex" justifyContent="center" gap={2} my={2} flexWrap="wrap">
+        <Box display="flex" justifyContent="right" gap={2} my={2} flexWrap="wrap" alignItems="center">
           <DatePicker
             label="Start Date"
             value={startDate}
@@ -169,6 +195,23 @@ const UserPerformanceDashboard = () => {
             format="dd-MM-yyyy"
             slotProps={{ textField: { variant: 'outlined' } }}
           />
+          <Button
+            variant="contained"
+            onClick={exportToExcel}
+            size="small"
+            sx={{
+              minWidth: 'auto',
+              px: 2,
+              py: 1,
+              mt: isMobile ? 1 : 0,
+              backgroundColor: 'oklch(37.9% 0.146 265.522)',
+              '&:hover': {
+                backgroundColor: 'oklch(37.9% 0.146 265.522)',
+              },
+            }}
+          >
+            <DownloadIcon fontSize="large" />
+          </Button>
         </Box>
       </LocalizationProvider>
 
@@ -199,7 +242,10 @@ const UserPerformanceDashboard = () => {
               {(() => {
                 const groupedByUser = {};
 
-                dateFilteredRows.forEach((row) => {
+                // Sort rows by lastActive DESCENDING before grouping
+                const sortedRows = [...dateFilteredRows].sort((a, b) => b.lastActive - a.lastActive);
+
+                sortedRows.forEach((row) => {
                   const key = row.username;
                   if (!groupedByUser[key]) groupedByUser[key] = [];
                   groupedByUser[key].push(row);

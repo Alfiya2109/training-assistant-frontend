@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { MdEdit } from "react-icons/md";
-import { FaCheck } from "react-icons/fa";
+import { FaCheck, FaDownload } from "react-icons/fa";
 import avatar from '../static/avatar.png';
 import { API_BASE_URL } from '../config';
+import { utils, writeFile } from 'xlsx';
+import DownloadIcon from '@mui/icons-material/Download';
 
 function Users() {
   const [users, setUsers] = useState([]);
@@ -71,7 +73,9 @@ function Users() {
         }
       });
 
-      const updatedUsers = users.map(usr => usr.username === user.username ? { ...usr, token_limit: editedTokenLimit } : usr);
+      const updatedUsers = users.map(usr =>
+        usr.username === user.username ? { ...usr, token_limit: editedTokenLimit } : usr
+      );
       setUsers(updatedUsers);
       handleCancel();
     } catch (e) {
@@ -79,19 +83,52 @@ function Users() {
     }
   };
 
+  const handleDownloadExcel = () => {
+    const data = filteredUsers.map(user => ({
+      "Full Name": `${user.first_name} ${user.last_name}`,
+      "Username": user.username,
+      "Request Count": user.openai_request_count,
+      "Total Token Consumed": user.token_consumption,
+      "Remaining Tokens": parseInt(user.token_limit) - parseInt(user.token_consumption),
+      "Token Limit": user.token_limit,
+      "Active Time": formatTime(user.active_time_today),
+      "Problems Solved": user.total_problems_solved,
+    }));
+
+    const worksheet = utils.json_to_sheet(data);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, "Users");
+
+    writeFile(workbook, "users_data.xlsx");
+  };
+
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div className='flex flex-col items-center px-4'>
+    <div className='flex flex-col items-center px-4 w-full'>
       <h1 className='text-blue-950 font-semibold text-4xl p-4'>Users</h1>
-      <input
-        type="text"
-        placeholder="Search by Name or Username"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4 p-2 border-blue-900 border-2 rounded-lg w-full max-w-4xl"
-      />
+
+      {/* Search input and download button */}
+      <div className="flex justify-between items-center w-full  mb-4">
+        <div className="flex w-full">
+          <input
+            type="text"
+            placeholder="Search by Name or Username"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="p-2 border-blue-900 border-2 rounded-lg w-full"
+          />
+          <button
+          onClick={handleDownloadExcel}
+          className="ml-4 py-2 px-3 bg-blue-900 text-white rounded-lg flex items-center gap-1 hover:bg-blue-800"
+          title="Download Excel"
+        >
+          <DownloadIcon />
+        </button>
+        </div>
+        
+      </div>
 
       {filteredUsers.length > 0 ? (
         <div className="overflow-x-auto w-full max-w-7xl">
