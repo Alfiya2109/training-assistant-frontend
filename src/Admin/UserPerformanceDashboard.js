@@ -70,6 +70,7 @@ const UserPerformanceDashboard = () => {
         }
 
         const difficultyCount = {};
+        let totalSolved = 0;
 
         if (student.question_status?.length) {
           student.question_status.forEach((qs) => {
@@ -87,11 +88,14 @@ const UserPerformanceDashboard = () => {
             difficultyCount[lang].total += 1;
           });
 
+          // Calculate total problems solved for this user
+          totalSolved = Object.values(difficultyCount).reduce((acc, counts) => acc + counts.total, 0);
+
           return Object.entries(difficultyCount).map(([lang, counts], index) => ({
             username: student.username,
             firstname: student.firstname,
             lastname: student.lastname,
-            totalProblemsSolved: student.total_problems_solved || 0,
+            totalProblemsSolved: totalSolved, // use the calculated total
             language: capitalizeFirstLetter(lang),
             easy: counts.easy,
             medium: counts.medium,
@@ -106,7 +110,7 @@ const UserPerformanceDashboard = () => {
             username: student.username,
             firstname: student.firstname,
             lastname: student.lastname,
-            totalProblemsSolved: student.total_problems_solved || 0,
+            totalProblemsSolved: 0,
             language: "N/A",
             easy: 0,
             medium: 0,
