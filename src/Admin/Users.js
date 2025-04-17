@@ -3,9 +3,10 @@ import axios from 'axios';
 import { MdEdit } from "react-icons/md";
 import { FaCheck, FaDownload } from "react-icons/fa";
 import avatar from '../static/avatar.png';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, API_MEDIA_URL } from '../config';
 import { utils, writeFile } from 'xlsx';
 import DownloadIcon from '@mui/icons-material/Download';
+
 
 function Users() {
   const [users, setUsers] = useState([]);
@@ -84,6 +85,7 @@ function Users() {
   };
 
   const handleDownloadExcel = () => {
+    
     const data = filteredUsers.map(user => ({
       "Full Name": `${user.first_name} ${user.last_name}`,
       "Username": user.username,
@@ -151,7 +153,7 @@ function Users() {
                 <tr key={user.username} className="border-t hover:bg-blue-50">
                   <td className="py-2 px-3 border text-center">
                     <img
-                      src={user.profile.profile_pic ? `${API_BASE_URL}${user.profile.profile_pic}` : avatar}
+                      src={user.profile.profile_pic ? `${API_MEDIA_URL}${user.profile.profile_pic}` : avatar}
                       alt={user.first_name}
                       className="w-10 h-10 object-cover rounded-full mx-auto"
                     />
