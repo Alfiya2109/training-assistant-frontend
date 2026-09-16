@@ -1,7 +1,7 @@
 import React, { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAutoLogout from './useAutoLogout';
-import { UserContext } from './Context/UserContext'; // Make sure this path matches your context file
+import { UserContext } from './Context/UserContext';
 
 const ProtectedRoute = ({ children, roleRequired }) => {
     const { user } = useContext(UserContext);
@@ -12,37 +12,47 @@ const ProtectedRoute = ({ children, roleRequired }) => {
         if (!token) return false;
 
         const tokenParts = token.split('.');        
-        if (tokenParts.length !== 3) return false; // Invalid token format
+        if (tokenParts.length !== 3) return false;
 
         try {
             const payload = JSON.parse(atob(tokenParts[1]));
             const expiry = payload.exp;
             const now = Math.floor(Date.now() / 1000);
 
-            if (expiry <= now) return false; // Token has expired
+            if (expiry <= now) return false;
             return true;
         } catch (e) {
-            return false; // Error in parsing token or invalid token
+            return false;
+        }
+    };
+
+    const getEffectiveUser = () => {
+        if (user) return user;
+        try {
+            const saved = localStorage.getItem('user_info');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            return null;
         }
     };
 
     const isAuthenticated = () => {
         const token = localStorage.getItem('access_token');
-        return isTokenValid(token) && user;
+        return isTokenValid(token) && !!getEffectiveUser();
     };
 
     const hasRequiredRole = () => {
-        return roleRequired ? user && user.isAdmin : true;
+        const effUser = getEffectiveUser();
+        return roleRequired ? effUser && effUser.isAdmin : true;
     };
 
     useEffect(() => {
         if (!isAuthenticated() || !hasRequiredRole()) {
-            // Redirect to login if not authenticated or role is not authorized
             navigate('/', { replace: true });
         }
-    }, [navigate, isAuthenticated, hasRequiredRole]);
+    }, [navigate]);
 
-    return isAuthenticated() && hasRequiredRole() ? children : null; // Render children or nothing if not authenticated or authorized
+    return isAuthenticated() && hasRequiredRole() ? children : null;
 };
 
 export default ProtectedRoute;

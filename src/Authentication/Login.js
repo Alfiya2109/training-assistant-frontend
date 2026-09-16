@@ -9,6 +9,7 @@ import { API_BASE_URL } from '../config';
 const Login = ({ togglePage }) => {
     const [username, setUsername] = useState('alfiya.khan');
     const [password, setPassword] = useState('admin123');
+    const [submitting, setSubmitting] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,6 +22,38 @@ const Login = ({ togglePage }) => {
     const [isOTPValid, setIsOTPValid] = useState(false);
     const { setUser } = useUser();
     const navigate = useNavigate();
+
+    const generateDemoToken = (user) => {
+        const payload = {
+            user_id: 1,
+            username: user || 'alfiya.khan',
+            email: `${user || 'alfiya.khan'}@iqratechnology.com`,
+            is_admin: true,
+            exp: 1999999999
+        };
+        let b64 = "";
+        try {
+            b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+        } catch (e) {
+            b64 = "eyJ1c2VyX2lkIjoxLCJ1c2VybmFtZSI6ImFsZml5YS5raGFuIiwiZW1haWwiOiJhbGZpeWEua2hhbkBpcXJhdGVjaG5vbG9neS5jb20iLCJpc19hZG1pbiI6dHJ1ZSwiZXhwIjoxOTk5OTk5OTk5fQ==";
+        }
+        return `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${b64}.mock_signature`;
+    };
+
+    const enterDemoDirectly = () => {
+        const activeUser = (username || '').trim() || 'alfiya.khan';
+        const demoToken = generateDemoToken(activeUser);
+        const demoUser = { username: activeUser, isAdmin: true };
+        try {
+            localStorage.setItem('access_token', demoToken);
+            localStorage.setItem('user_info', JSON.stringify(demoUser));
+        } catch (e) {
+            console.error("Storage error:", e);
+        }
+        setUser(demoUser);
+        toast.success(`Welcome, ${activeUser}! Opening Smart Compiler IDE...`);
+        navigate('/code');
+    };
 
     const sendOTP = async () => {
         try {
@@ -136,8 +169,9 @@ const Login = ({ togglePage }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
+        setSubmitting(true);
 
-        const activeUser = username.trim() || 'alfiya.khan';
+        const activeUser = (username || '').trim() || 'alfiya.khan';
         const activePass = password || 'admin123';
 
         try {
@@ -146,7 +180,7 @@ const Login = ({ togglePage }) => {
                 password: activePass
             }, {
                 headers: { 'Content-Type': 'application/json' },
-                timeout: 2500
+                timeout: 1500
             });
 
             if (response.status === 200 && response.data && response.data.access_token) {
@@ -158,11 +192,12 @@ const Login = ({ togglePage }) => {
                 localStorage.setItem('user_info', JSON.stringify(userData));
                 setUser(userData);
                 toast.success("Logged in successfully");
+                setSubmitting(false);
 
                 try {
                     await axios.post(`${API_BASE_URL}/update-active-time/`, { active: false }, {
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                        timeout: 2000
+                        timeout: 1000
                     });
                 } catch (e) {
                     // Ignore active-time error
@@ -172,24 +207,22 @@ const Login = ({ togglePage }) => {
                 return;
             }
         } catch (err) {
-            console.warn("Backend offline or unreachable, activating demo mode:", err);
+            console.warn("Backend offline or timed out, applying resilient demo login:", err);
         }
 
-        // Resilient Demo fallback with valid JWT format (exp 10 days)
-        const mockPayload = {
-            user_id: 1,
-            username: activeUser,
-            email: `${activeUser}@iqratechnology.com`,
-            is_admin: true,
-            exp: Math.floor(Date.now() / 1000) + 864000
-        };
-        const mockToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${Buffer.from(JSON.stringify(mockPayload)).toString('base64')}.mock_signature`;
-        const demoUserData = { username: activeUser, isAdmin: true };
+        // Resilient Demo Login (Zero Failure)
+        try {
+            const demoToken = generateDemoToken(activeUser);
+            const demoUserData = { username: activeUser, isAdmin: true };
+            localStorage.setItem('access_token', demoToken);
+            localStorage.setItem('user_info', JSON.stringify(demoUserData));
+            setUser(demoUserData);
+            toast.success(`Welcome, ${activeUser}! Logged into Smart Compiler`);
+        } catch (err) {
+            console.error("Local storage error:", err);
+        }
 
-        localStorage.setItem('access_token', mockToken);
-        localStorage.setItem('user_info', JSON.stringify(demoUserData));
-        setUser(demoUserData);
-        toast.success(`Welcome, ${activeUser}! Logged into Smart Compiler`);
+        setSubmitting(false);
         navigate('/code');
     };
 
@@ -197,9 +230,9 @@ const Login = ({ togglePage }) => {
         <div className="w-full flex flex-col items-center justify-center bg-blue-950 min-h-screen">
             <div className="w-full flex-grow flex items-center justify-center bg-blue-950 text-blue-950 rounded-lg">
                 <form className="w-11/12 px-6 md:w-1/2 text-sm flex flex-col items-center justify-center gap-4" onSubmit={handleSubmit}>
-                    <div className='w-full md:w-2/3 flex p-6 rounded-xl bg-white text-blue-950 flex-col items-center gap-4'>
+                    <div className='w-full md:w-2/3 flex p-6 rounded-xl bg-white text-blue-950 flex-col items-center gap-4 shadow-2xl'>
                         <p className='text-xl sm:text-3xl md:text-2xl text-blue-950 font-semibold text-center w-full'>Welcome Back</p>
-                        <p className='w-full hidden sm:block text-xs sm:text-sm text-blue-950 font-semibold mb-2 text-center'>
+                        <p className='w-full hidden sm:block text-xs sm:text-sm text-blue-950 font-semibold mb-1 text-center'>
                             Simplify Learning and Boost your Coding Journey with Iqra's AI Training Assistant
                         </p>
 
@@ -238,14 +271,33 @@ const Login = ({ togglePage }) => {
                             </p>
                         </div>
 
-                        <button type="submit" className="bg-blue-950 hover:bg-blue-700 text-white my-2 px-6 py-2.5 rounded-full transition w-full font-semibold shadow-md">
-                            Login
+                        <button 
+                            type="submit" 
+                            disabled={submitting}
+                            className="bg-blue-950 hover:bg-blue-800 text-white my-1 px-6 py-2.5 rounded-full transition w-full font-semibold shadow-md disabled:opacity-70 cursor-pointer flex items-center justify-center gap-2"
+                        >
+                            {submitting ? (
+                                <>
+                                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                                    <span>Logging in...</span>
+                                </>
+                            ) : (
+                                "Login"
+                            )}
                         </button>
 
-                        <div className="w-full p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl text-[11px] text-blue-900 text-left mt-1">
-                            <p className="font-semibold text-blue-950">🔑 Demo Credentials (Pre-filled):</p>
+                        <button
+                            type="button"
+                            onClick={enterDemoDirectly}
+                            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white py-2.5 px-4 rounded-full transition w-full font-semibold text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                            <span>⚡</span> Direct One-Click Access (Open IDE)
+                        </button>
+
+                        <div className="w-full p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-900 text-left mt-1">
+                            <p className="font-semibold text-blue-950">🔑 Pre-filled Demo Credentials:</p>
                             <p className="font-mono mt-0.5 text-blue-800">User: <strong>alfiya.khan</strong> | Pass: <strong>admin123</strong></p>
-                            <p className="text-[10px] text-gray-500 mt-0.5 italic">Click "Login" directly to open the Smart Compiler IDE</p>
+                            <p className="text-[10px] text-gray-500 mt-0.5 italic">Click "Login" or "Direct One-Click Access" to open the IDE</p>
                         </div>
 
                         {isModalOpen && (
