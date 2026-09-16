@@ -234,7 +234,12 @@ const Login = ({ togglePage }) => {
                         </p>
                     </div>
 
-                    <button type="submit" className="bg-blue-950 hover:bg-blue-600 text-white my-2 px-6 py-2 rounded-full transition w-full">Login</button>
+                    <button type="submit" className="bg-blue-950 hover:bg-blue-700 text-white my-2 px-6 py-2 rounded-full transition w-full font-semibold shadow-md">Login</button>
+                    <div className="w-full p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl text-[11px] text-blue-900 text-left mt-1">
+                        <p className="font-semibold text-blue-950">🔑 Demo Credentials (Pre-filled):</p>
+                        <p className="font-mono mt-0.5 text-blue-800">User: <strong>alfiya.khan</strong> | Pass: <strong>admin123</strong></p>
+                        <p className="text-[10px] text-gray-500 mt-0.5 italic">Click "Login" directly to open the Smart Compiler IDE</p>
+                    </div>
                 
                     {isModalOpen && (
                 <Modal onClose={() => setIsModalOpen(false)}>
