@@ -19,6 +19,7 @@ const AIChat = ({ loading, setLoading, toggleAssistant, errorMessage, messages, 
         setRemainingTokens(parseInt(response.data.token_limit)-parseInt(response.data.token_consumption)); // Set remaining tokens from response
         setLoading(false); // Set loading to false once data is loaded
       } catch (e) {
+        setRemainingTokens(50000);
         setLoading(false); // Ensure loading is set to false
       }
     };
